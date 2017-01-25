@@ -1,0 +1,12 @@
+<AppMonConfig>
+    <agents>
+        <Agent>
+            <ID>TRS-01</ID>
+            <URL>TCP:127.0.0.1:8080?ssl=false</URL>
+        </Agent>
+        <Agent>
+            <ID>TRS-02</ID>
+            <URL>TCP:127.0.0.1:8080?ssl=false</URL>
+        </Agent>
+    </agents>
+</AppMonConfig>

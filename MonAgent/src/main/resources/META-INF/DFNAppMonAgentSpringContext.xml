@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="
+             http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+             http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring-2.18.1.xsd">
+
+    <!--<camelContext xmlns="http://camel.apache.org/schema/spring">-->
+    <camelContext errorHandlerRef="deadLetterAgentErrorHandler" xmlns="http://camel.apache.org/schema/spring">
+        <!--<camelContext errorHandlerRef="loggingErrorHandler" xmlns="http://camel.apache.org/schema/spring">-->
+
+        <route>
+            <from uri="quartz:TCPTimelyUpdater?cron=0/15 * * * * ?"/>
+            <process ref="tcpTimelyUpdateProcessor"/>
+            <to uri="netty:tcp://127.0.0.1:8282?keepAlive=true&amp;tcpNoDelay=true&amp;sync=true&amp;
+            ssl=false&amp;textline=true&amp;decoderMaxLineLength=4096"/>
+        </route>
+
+        <route>
+            <from uri="direct:defaultAgentExceptionHandler"/>
+            <bean ref="defaultAgentExceptionHandler"/>
+        </route>
+
+        <!--<route>-->
+        <!--<from uri="netty:tcp://localhost:50001?sync=false" />-->
+        <!--&lt;!&ndash;<from uri="stream:file?fileName=D:\Projects\MubasherProjects\NewOMS_Core_Custom\DFNAppMon\MonServer\src\main\resources\log4j2.xml" />&ndash;&gt;-->
+        <!--<bean ref="nettyTCPDefaultINProcessor" method="process" />-->
+        <!--<to uri="stream:out"/>-->
+        <!--&lt;!&ndash;<to uri="eventadmin:messages/aacus/inbound" />&ndash;&gt;-->
+        <!--</route>-->
+
+    </camelContext>
+
+     <bean id="deadLetterAgentErrorHandler" class="org.apache.camel.builder.DeadLetterChannelBuilder">
+        <property name="deadLetterUri"  value="direct:defaultAgentExceptionHandler"/>
+        <property name="redeliveryPolicy" ref="defaultRedeliveryPolicyConfig"/>
+
+    </bean>
+    <bean id="tcpTimelyUpdateProcessor"
+          class="com.isi.appmon.agent.camel.processor.TCPTimelyUpdateProcessor">
+        <property name="agentMsgBuilderI" ref="defaultAgentMsgBuilder"/>
+    </bean>
+
+    <bean id="defaultAgentMsgBuilder" class="com.isi.appmon.agent.NetMonAgentMsgDefaultBuilder">
+        <property name="agentConfigs" ref="agentConfigs"/>
+    </bean>
+
+    <bean id="defaultRedeliveryPolicyConfig" class="org.apache.camel.processor.RedeliveryPolicy">
+        <property name="maximumRedeliveries" value="2"/>
+    </bean>
+
+    <bean id="defaultAgentExceptionHandler" class="com.isi.appmon.agent.camel.exception.DefaultAgentExceptionHandler"/>
+    <bean id="agentConfigs" class="com.isi.appmon.agent.beans.AgentConfigs">
+            <property name="agentID" value="TRS-Dummy-Agent-1"/>
+            <property name="componentDownWarningInMillis" value="5000"/>
+            <property name="componentDownConfirmInMillis" value="15000"/>
+            <property name="freeMemoryWarningPercentage" value="30"/>
+            <property name="freeMemoryCriticalPercentage" value="10"/>
+    </bean>
+</beans>

@@ -1,0 +1,1 @@
+java -Dlog4j.configurationFile=log4j2.xml -Xms512m -Xmx1024m -jar MonAgent-1.0.jar

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns="http://www.springframework.org/schema/beans"
+             xsi:schemaLocation="
+             http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+             http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring-2.18.1.xsd">
+
+    <!--<camelContext xmlns="http://camel.apache.org/schema/spring">-->
+    <camelContext errorHandlerRef="deadLetterErrorHandler" xmlns="http://camel.apache.org/schema/spring">
+    <!--<camelContext errorHandlerRef="loggingErrorHandler" xmlns="http://camel.apache.org/schema/spring">-->
+
+        <route>
+            <from uri="netty:tcp://127.0.0.1:8282?textline=true&amp;sync=true&amp;decoderMaxLineLength=4096"/>
+            <process ref="nettyTCPDefaultINProcessor"/>
+            <to uri="stream:out"/>
+        </route>
+
+        <route>
+            <from uri="direct:defaultExceptionHandler"/>
+            <bean ref="defaultExceptionHandler"/>
+        </route>
+
+        <route>
+            <from uri="quartz:ViewUpdater?cron=0/5 * * * * ?"/>
+            <process ref="viewUpdateProcessor"/>
+        </route>
+
+        <route>
+            <from uri="jetty:http://0.0.0.0:8081/NetMonServer/agentView"/>
+            <process ref="viewUpdateProcessor"/>
+            <process ref="httpViewAdaptor"/>
+        </route>
+
+    </camelContext>
+
+    <bean id="nettyTCPDefaultINProcessor" class="com.isi.appmon.server.camel.processor.NettyTCPDefaultINProcessor"/>
+    <bean id="viewUpdateProcessor" class="com.isi.appmon.server.camel.processor.AppMonViewUpdateProcessor"/>
+    <bean id="httpViewAdaptor" class="com.isi.appmon.server.camel.processor.AppMonServerHttpViewAdaptor"/>
+    <bean id="defaultExceptionHandler" class="com.isi.appmon.server.camel.exception.DefaultExceptionHandler"/>
+    <bean id="deadLetterErrorHandler" class="org.apache.camel.builder.DeadLetterChannelBuilder">
+        <property name="deadLetterUri"  value="direct:defaultExceptionHandler"/>
+        <property name="redeliveryPolicy" ref="defaultRedeliveryPolicyConfig"/>
+
+    </bean>
+    <bean id="loggingErrorHandler" class="org.apache.camel.builder.LoggingErrorHandlerBuilder">
+        <property name="logName" value="mylogger.name"/>
+        <property name="level" value="DEBUG"/>
+    </bean>
+
+    <bean id="defaultRedeliveryPolicyConfig" class="org.apache.camel.processor.RedeliveryPolicy">
+        <property name="maximumRedeliveries" value="2"/>
+    </bean>
+</beans>
